@@ -1,12 +1,16 @@
 package net.service
 
 import twitter4j._
+//import java.util.concurrent.ConcurrentMap
+import java.util.concurrent.atomic.AtomicLong
 
 object TweetService {
-	
+
+	val tweetCount = new AtomicLong()
+
 	private val listener = new StatusListener() {
 		override def onStatus(s: Status): Unit = 
-			println(s.getUser.getName + " : " + s.getText)
+			incrementTweetCount()
 		override def onDeletionNotice(n: StatusDeletionNotice): Unit = ()
 		override def onTrackLimitationNotice(numberOfLimitedStatuses: Int): Unit = ()
 		override def onException(e: Exception): Unit = 
@@ -22,4 +26,10 @@ object TweetService {
 		stream.addListener(listener)
 		stream.sample()		
 	}
+
+	private def incrementTweetCount(): Unit = {
+		tweetCount.getAndIncrement()
+		()
+	}
+
 }

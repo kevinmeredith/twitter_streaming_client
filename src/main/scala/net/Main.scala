@@ -9,13 +9,12 @@ import net.web.TweetHttpService
 object Main extends ServerApp {
 
   override def server(args: List[String]): Task[Server] = for {
-  	_      <- Task ( TweetService.sample)
+  	_      <- Task { TweetService.sample }
   	server <- (
 		BlazeBuilder
       		.bindHttp(8080, "localhost")
-      		.mountService(TweetHttpService.personService, "/api")
+      		.mountService(TweetHttpService.summary, "/api")
       		.start
   		)
   } yield server
-
 }
