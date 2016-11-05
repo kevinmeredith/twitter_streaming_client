@@ -1,16 +1,20 @@
 package net
 
+import cats.data.Xor
 import org.http4s._
 import org.http4s.client.blaze._
 import org.http4s.client.oauth1
+
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 import jawnstreamz._
-import io.circe.Json
-import java.time.{LocalDateTime, Duration}
+import io.circe.{DecodingFailure, Json}
+import io.circe.syntax._
+import net.model.Tweet
 
 object Main {
 
+	// OAuth Tokens for accessing Twitter's sample streams API
 	private val AccessToken       = "23021955-NeZKh2JAYW1Q5y0Ki9RQYtBtydNxN5ObHm7lNdIw2"
 	private val AccessTokenSecret = "o6SZfroTRuR5VmDqYwYvH8N0ea2sD3DNn0TcgYqJuJolZ"
 
@@ -23,7 +27,7 @@ object Main {
 	// http://scastie.org/23401
 
 	implicit val f = io.circe.jawn.CirceSupportParser.facade
-	val consumer = oauth1.Consumer(ConsumerKey, ConsumerSecret)
+	val consumer   = oauth1.Consumer(ConsumerKey, ConsumerSecret)
 
 	val client = PooledHttp1Client()
 
@@ -39,8 +43,16 @@ object Main {
 	}
 
 	def main(args: Array[String]): Unit = {
-	   val count = stati(AccessToken, AccessTokenSecret)(TwitterStreamingSample).take(10).runLog.run
-	   println(count)
+//	   val response: Vector[Xor[DecodingFailure, Tweet]] = stati(AccessToken, AccessTokenSecret)(TwitterStreamingSample).map {
+//			_.as[Tweet]
+//		 }.take(3).runLog.unsafePerformSync
+		val response = stati(AccessToken, AccessTokenSecret)(TwitterStreamingSample).take(3).runLog.unsafePerformSync
+		 println("response count: " + response.size)
+		 response.foreach { x =>
+			 println("----")
+			 println(x)
+		 }
+		 sys.exit(0)
 	}
 
 }
