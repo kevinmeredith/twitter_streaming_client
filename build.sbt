@@ -10,6 +10,7 @@ libraryDependencies ++= Seq(
   "io.circe"      %% "circe-core"          % circeVersion,
   "io.circe"      %% "circe-generic"       % circeVersion,
   "org.scalatest" %% "scalatest"           % "3.0.0",
+  "joda-time"     % "joda-time"             % "2.9.5",
   "io.circe"      %% "circe-parser"        % circeVersion % "test"
 
 )

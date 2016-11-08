@@ -31,6 +31,7 @@ object Main {
 
 	val client = PooledHttp1Client()
 
+	// stati is plural of status
 	def stati(tokenAccess: String, tokenSecret: String)(uri: String): Process[Task, Json] = {
 		val token = oauth1.Token(tokenAccess, tokenSecret)
 		for {
@@ -43,9 +44,6 @@ object Main {
 	}
 
 	def main(args: Array[String]): Unit = {
-//	   val response: Vector[Xor[DecodingFailure, Tweet]] = stati(AccessToken, AccessTokenSecret)(TwitterStreamingSample).map {
-//			_.as[Tweet]
-//		 }.take(3).runLog.unsafePerformSync
 		val response = stati(AccessToken, AccessTokenSecret)(TwitterStreamingSample).take(3).runLog.unsafePerformSync
 		 println("response count: " + response.size)
 		 response.foreach { x =>
