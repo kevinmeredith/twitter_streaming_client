@@ -44,11 +44,14 @@ object Main {
 	}
 
 	def main(args: Array[String]): Unit = {
-		val response = stati(AccessToken, AccessTokenSecret)(TwitterStreamingSample).take(3).runLog.unsafePerformSync
+		val response = stati(AccessToken, AccessTokenSecret)(TwitterStreamingSample).take(300).runLog.unsafePerformSync
 		 println("response count: " + response.size)
 		 response.foreach { x =>
 			 println("----")
-			 println(x)
+			 x.as[Tweet] match {
+				 case Xor.Right(success) => println(x)
+				 case Xor.Left(_)				 => ()
+			 }
 		 }
 		 sys.exit(0)
 	}

@@ -7,14 +7,21 @@ object HashTag {
   implicit val hashTagDecoder: Decoder[HashTag] = deriveDecoder[HashTag]
 }
 
-case class Entities(hashtags: List[HashTag], urls: List[String])
+case class EntityUrl(url: String)
+object EntityUrl {
+  implicit val entityUrlDecoder: Decoder[EntityUrl] = deriveDecoder[EntityUrl]
+}
+
+case class Entities(hashtags: List[HashTag], urls: List[EntityUrl])
 object Entities {
   implicit val entitiesDecoder: Decoder[Entities] = deriveDecoder[Entities]
 }
 
-case class Tweet(text: String, private val entities: Entities ) {
+// See https://dev.twitter.com/overview/api/tweets
+// for the Tweet's JSON spec/protocol.
+case class Tweet(text: String, entities: Entities ) {
   val hashTags: List[String] = entities.hashtags.map(_.text)
-  val urls:     List[String] = entities.urls
+  val urls:     List[String] = entities.urls.map(_.url)
 }
 object Tweet {
   implicit val tweetDecoder: Decoder[Tweet] = deriveDecoder[Tweet]

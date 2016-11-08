@@ -136,8 +136,7 @@
         "text": "bippy"
       }
     ],
-    "urls" : [
-    ],
+    "urls": [{"indices":[32,52], "url":"http://foo.bar.com", "display_url":"blah blah blah"}],
     "user_mentions" : [
       {
         "screen_name" : "y7loha",
