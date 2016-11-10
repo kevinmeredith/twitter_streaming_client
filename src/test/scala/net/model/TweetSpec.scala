@@ -17,7 +17,8 @@ class TweetSpec extends FlatSpec with Matchers {
       text     = "blah blah blah tweet",
       entities = Entities(
         hashtags = List( HashTag( "bippy" ) ),
-        urls     = List( EntityUrl( "http://foo.bar.com" ) )
+        urls     = List( EntityUrl( "http://foo.bar.com" ) ),
+        media    = Nil
       )
     )
     obj should be (Xor.right(expected))

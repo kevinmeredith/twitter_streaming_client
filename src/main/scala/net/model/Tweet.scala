@@ -12,7 +12,12 @@ object EntityUrl {
   implicit val entityUrlDecoder: Decoder[EntityUrl] = deriveDecoder[EntityUrl]
 }
 
-case class Entities(hashtags: List[HashTag], urls: List[EntityUrl])
+case class Media(display_url: String)
+object Media {
+  implicit val mediaDecoder: Decoder[Media] = deriveDecoder[Media]
+}
+
+case class Entities(hashtags: List[HashTag], urls: List[EntityUrl], media: List[Media])
 object Entities {
   implicit val entitiesDecoder: Decoder[Entities] = deriveDecoder[Entities]
 }
@@ -20,8 +25,9 @@ object Entities {
 // See https://dev.twitter.com/overview/api/tweets
 // for the Tweet's JSON spec/protocol.
 case class Tweet(text: String, entities: Entities ) {
-  val hashTags: List[String] = entities.hashtags.map(_.text)
-  val urls:     List[String] = entities.urls.map(_.url)
+  val hashTags: List[String]    = entities.hashtags.map(_.text)
+  val urls:     List[String]    = entities.urls.map(_.url)
+  val twitterPics: List[String] = entities.media.map(_.display_url)
 }
 object Tweet {
   implicit val tweetDecoder: Decoder[Tweet] = deriveDecoder[Tweet]
