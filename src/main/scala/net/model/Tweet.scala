@@ -17,7 +17,7 @@ object Media {
   implicit val mediaDecoder: Decoder[Media] = deriveDecoder[Media]
 }
 
-case class Entities(hashtags: List[HashTag], urls: List[EntityUrl], media: List[Media])
+case class Entities(hashtags: List[HashTag], urls: List[EntityUrl], media: Option[List[Media]])
 object Entities {
   implicit val entitiesDecoder: Decoder[Entities] = deriveDecoder[Entities]
 }
@@ -27,7 +27,7 @@ object Entities {
 case class Tweet(text: String, entities: Entities ) {
   val hashTags: List[String]    = entities.hashtags.map(_.text)
   val urls:     List[String]    = entities.urls.map(_.url)
-  val twitterPics: List[String] = entities.media.map(_.display_url)
+  val twitterPics: List[String] = entities.media.map(_.map(_.display_url)).getOrElse(Nil)
 }
 object Tweet {
   implicit val tweetDecoder: Decoder[Tweet] = deriveDecoder[Tweet]

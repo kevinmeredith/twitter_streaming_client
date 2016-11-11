@@ -4,6 +4,8 @@ import org.joda.time.{DateTime, Duration}
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 import net.model.Tweet
+import scalaz.concurrent.Task
+import scalaz.stream.Process
 
 object TweetService {
 
@@ -24,7 +26,19 @@ object TweetService {
   // "While tweeting links to Instagram photos is still possible, you can no longer view the photos on Twitter."
   private val tweetsHavingTwitterOrInstagramPicture = new AtomicLong
 
-  def updateCount(tweet: Tweet): Unit = {
+  /**
+    * Given a Stream of Tweet's, mutate state to keep track of metrics, e.g.
+    * total # of tweets, top hash tags, etc.
+    */
+  def readStream(p: Process[Task, Tweet]): Process[Task, Unit] =
+    p.map { tweet =>
+      updateCount(tweet)
+      updateHashTagCount(tweet)
+      updateTweetCountPicture(tweet)
+      updateTweetCountHavingUrl(tweet)
+    }
+
+  private def updateCount(tweet: Tweet): Unit = {
     val result = tweetCount.getAndIncrement()
     () // ignoring result since this function is a side-effect
   }
@@ -32,7 +46,7 @@ object TweetService {
   import java.util.function.{Function => jFunction}
 
   // credit: http://stackoverflow.com/a/26214475/409976
-  def updateHashCodeCount(tweet: Tweet): Unit = {
+  private def updateHashTagCount(tweet: Tweet): Unit = {
     val update = new jFunction[String, AtomicLong] {
       override def apply(x: String) = new AtomicLong()
     }
@@ -42,8 +56,26 @@ object TweetService {
     }
   }
 
+  private def updateTweetCountHavingUrl(tweet: Tweet): Unit =
+    tweet.urls match {
+      case _ :: _ => val ignoredResult = tweetsHavingUrl.getAndIncrement; ()
+      case Nil    => () // no need to update count since there's no URLs
+    }
+
+  private def updateTweetCountPicture(tweet: Tweet): Unit =
+    findTwitterPic(tweet).orElse(findInstagramUrl(tweet)) match {
+      case Some(_) =>
+        val result = tweetsHavingTwitterOrInstagramPicture.getAndIncrement()
+        () // ignore since this method updates a counter
+      case None    => ()
+    }
+
   import collection.JavaConverters._
   import scala.collection.SortedMap
+
+  // Retrieve total number of tweets received so far
+  def totalTweets: Long =
+    tweetCount.get
 
   // Return top-5 Hash Tags by count
   def top5HashTags: List[(String, Long)] = {
@@ -79,14 +111,6 @@ object TweetService {
     val decimalPercent = BigDecimal.valueOf( count ) / BigDecimal.valueOf ( tweetCount.get )
     decimalPercent * BigDecimal.valueOf( 100 )
   }
-
-  def updateTweetCountHavingUrl(tweet: Tweet): Unit =
-    findTwitterPic(tweet).orElse(findInstagramUrl(tweet)) match {
-      case Some(_) =>
-        val result = tweetsHavingTwitterOrInstagramPicture.getAndIncrement()
-        () // ignore since this method updates a counter
-      case None    => ()
-    }
 
   private def findTwitterPic(tweet: Tweet): Option[String] =
     tweet.twitterPics match {
