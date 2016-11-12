@@ -1,9 +1,10 @@
 package net.service
 
+import cats.data.NonEmptyList
 import org.joda.time.{DateTime, Duration}
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
-import net.model.Tweet
+import net.model.{ Emoji, Tweet }
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 
@@ -26,22 +27,29 @@ object TweetService {
   // "While tweeting links to Instagram photos is still possible, you can no longer view the photos on Twitter."
   private val tweetsHavingTwitterOrInstagramPicture = new AtomicLong
 
+  // Tweet Counts of any Tweet having at least a single Emoji.
+  private val tweetsHavingEmoji = new AtomicLong
+
   /**
     * Given a Stream of Tweet's, mutate state to keep track of metrics, e.g.
     * total # of tweets, top hash tags, etc.
     */
-  def readStream(p: Process[Task, Tweet]): Process[Task, Unit] =
+  def readStream(p: Process[Task, Tweet], emojis: NonEmptyList[Emoji]): Process[Task, Unit] =
     p.map { tweet =>
       updateCount(tweet)
       updateHashTagCount(tweet)
       updateTweetCountPicture(tweet)
       updateTweetCountHavingUrl(tweet)
+      updateTweetsWithEmoji(tweet, emojis)
     }
 
   private def updateCount(tweet: Tweet): Unit = {
     val result = tweetCount.getAndIncrement()
     () // ignoring result since this function is a side-effect
   }
+
+  private def updateTweetsWithEmoji(tweet: Tweet, emojis: NonEmptyList[Emoji]): Unit = ???
+
 
   import java.util.function.{Function => jFunction}
 

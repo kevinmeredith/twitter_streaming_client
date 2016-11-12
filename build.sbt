@@ -9,11 +9,10 @@ libraryDependencies ++= Seq(
   "org.http4s"    %% "http4s-circe"        % http4sVersion,
   "io.circe"      %% "circe-core"          % circeVersion,
   "io.circe"      %% "circe-generic"       % circeVersion,
+  "io.circe"      %% "circe-parser"        % circeVersion,
   "org.scalatest" %% "scalatest"           % "3.0.0",
   "joda-time"     % "joda-time"            % "2.9.5",
-  "org.joda"      % "joda-convert"         % "1.2", // http://stackoverflow.com/a/13856382/409976
-  "io.circe"      %% "circe-parser"        % circeVersion % "test"
-
+  "org.joda"      % "joda-convert"         % "1.2" // http://stackoverflow.com/a/13856382/409976
 )
 
 fork := true
