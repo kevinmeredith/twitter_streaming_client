@@ -2,7 +2,7 @@ package net.service
 
 import java.io.File
 import io.circe.parser._
-import cats.data.{NonEmptyList, Xor}
+import cats.data.Xor
 import io.circe.Json
 import net.model.Emoji
 import scalaz.concurrent.Task
@@ -11,23 +11,33 @@ object EmojiService {
 
   /**
     * Given a String, find the first Emoji.
-    * @param string String input
+    * @param emoji Single Emoji
+    * @param input String input
     * @return First Emoji found or None if none is present
     */
-  def exists(string: String): Option[Emoji] = ???
+  def exists(emoji: Emoji, input: String): Option[Emoji] = {
+    val intValues = input.map(_.toInt)
+    intValues 
+  }
 
   /**
     * Given a String, find all Emojis.
+    * @param emojis Non-empty list of emojis
     * @param string String input
     * @return All Emojis found in the String.
     */
-  def findAll(string: String): List[Emoji] = ???
-
-
-  def read(file: File): Task[NonEmptyList[Emoji]] = readFileToJson(file).flatMap { json =>
-    json.as[NonEmptyList[Emoji]] match {
-      case Xor.Right(emojis)  => Task.now( emojis )
-      case Xor.Left(err) => Task.fail( new RuntimeException(err) )
+  def findAll(emojis: List[Emoji], string: String): List[Emoji] = ???
+  
+  /**
+    * Given a [[java.io.File]], return a [[scalaz.concurrent.Task]]-wrapped Non-empty list of emojis
+    * that were extracted from the File.
+    * @param file File from which to extract emojis
+    * @return [[scalaz.concurrent.Task]]-wrapped Non-empty list of emojis
+    */
+  def read(file: File): Task[List[Emoji]] = readFileToJson(file).flatMap { json =>
+    json.as[List[Emoji]] match {
+      case Xor.Right(emojis) => Task.now( emojis )
+      case Xor.Left(err)     => Task.fail( new RuntimeException(err) )
     }
   }
 

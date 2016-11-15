@@ -1,6 +1,5 @@
 package net.service
 
-import cats.data.NonEmptyList
 import org.joda.time.{DateTime, Duration}
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
@@ -34,7 +33,7 @@ object TweetService {
     * Given a Stream of Tweet's, mutate state to keep track of metrics, e.g.
     * total # of tweets, top hash tags, etc.
     */
-  def readStream(p: Process[Task, Tweet], emojis: NonEmptyList[Emoji]): Process[Task, Unit] =
+  def processTweetStream(p: Process[Task, Tweet], emojis: List[Emoji]): Process[Task, Unit] =
     p.map { tweet =>
       updateCount(tweet)
       updateHashTagCount(tweet)
@@ -48,8 +47,7 @@ object TweetService {
     () // ignoring result since this function is a side-effect
   }
 
-  private def updateTweetsWithEmoji(tweet: Tweet, emojis: NonEmptyList[Emoji]): Unit = ???
-
+  private def updateTweetsWithEmoji(tweet: Tweet, emojis: List[Emoji]): Unit = ???
 
   import java.util.function.{Function => jFunction}
 

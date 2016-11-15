@@ -11,7 +11,7 @@ class TweetServiceSpec extends FlatSpec with Matchers {
 
   "Getting the tweet count of Stream[Task, Tweet] when taking 100 items" should "show a tweetCount of 100" in {
     val stream: Process[Task, Tweet] = Process.repeatEval(Task.now(tweet1)).take(100)
-    val readStream: Unit             = TweetService.readStream(stream).run.unsafePerformSync
+    val readStream: Unit             = TweetService.processTweetStream(stream, Nil).run.unsafePerformSync
     TweetService.totalTweets             should be (100)
     TweetService.percentageHavingUrl     should be (0)
     TweetService.percentageHavingPicture should be (0)
