@@ -1,16 +1,8 @@
 # How to Run
 
-Run the below `.bat` script:
-
-# Batch Script
-
 ```
-set twitter4j.debug=true
-set twitter4j.oauth.consumerKey=**************************************************
-set twitter4j.oauth.consumerSecret=**************************************************
-set twitter4j.oauth.accessToken=**************************************************
-set twitter4j.oauth.accessTokenSecret=******************************************
-sbt clean run
+# cd to project root
+run_sbt_utf8.bat
 ```
 
 # Reference:
