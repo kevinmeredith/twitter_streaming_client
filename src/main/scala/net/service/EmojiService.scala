@@ -15,10 +15,8 @@ object EmojiService {
     * @param input String input
     * @return First Emoji found or None if none is present
     */
-  def exists(emoji: Emoji, input: String): Option[Emoji] = {
-    val intValues = input.map(_.toInt)
-    intValues 
-  }
+  def exists(emoji: Emoji, input: String): Option[Emoji] =
+    if(input.contains(emoji.unicode)) Some(emoji) else None
 
   /**
     * Given a String, find all Emojis.
@@ -26,7 +24,10 @@ object EmojiService {
     * @param string String input
     * @return All Emojis found in the String.
     */
-  def findAll(emojis: List[Emoji], string: String): List[Emoji] = ???
+  def findAll(emojis: List[Emoji], string: String): List[Emoji] =
+    emojis.flatMap { e =>
+      exists(e, string)
+    }
   
   /**
     * Given a [[java.io.File]], return a [[scalaz.concurrent.Task]]-wrapped Non-empty list of emojis
