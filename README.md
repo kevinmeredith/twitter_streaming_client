@@ -2,7 +2,8 @@
 
 ```
 # cd to project root
-run_sbt_utf8.bat
+$run_sbt_utf8.bat
+>sbt run
 ```
 
 # Reference:

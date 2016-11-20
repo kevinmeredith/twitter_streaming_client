@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
 
 fork := true
 
-javaOptions in test += "-Dfile.encoding=UTF-8"
+javaOptions in test += "-Dfile.encoding=UTF-16"
 
 // credit: https://tpolecat.github.io/2014/04/11/scalac-flags.html
 scalacOptions ++= Seq(
