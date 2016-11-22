@@ -1,18 +1,21 @@
 package net.model
 
 import io.circe._
-import cats.data.Xor
+import cats.data.{NonEmptyList, Xor}
 
 // See https://github.com/iamcal/emoji-data#using-the-data
 // for the spec/protocol that this [[net.model.Emoji]] follows.
-sealed abstract case class Emoji(name: Option[String], value: String)
+sealed abstract case class Emoji(name: Option[String], codePoints: NonEmptyList[Int]) {
+  val codePointsSize: Int = 1 + codePoints.tail.size
+  val list: List[Int]     = codePoints.head :: codePoints.tail
+}
 object Emoji {
 
   import cats.implicits._
 
   def fromString(name: Option[String], input: String): Option[Emoji] =
     input.split("-").toList match {
-      case uni @ _ :: _  => codePointsToString(uni).map { value =>  new Emoji(name, value) {}}
+      case uni @ _ :: _  => codePointsToString(uni).map { str => new Emoji(name, str) {} }
       case _             => None
   }
 
@@ -23,17 +26,20 @@ object Emoji {
     *
     * Uses https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#String-int:A-int-int-.
     */
-   def codePointsToString(x: List[String]): Option[String] = {
-      if(x.length == 4 || x.length == 5) {
-        val codePointsOrNothing = x.map(stringToCodePointValue).sequence
-        codePointsOrNothing.map { cps =>
-          new String(cps.toArray, 0, cps.length)
-        }
-      }
-      else {
-        None
-      }
-    }
+   def codePointsToString(hex: List[String]): Option[NonEmptyList[Int]] = {
+     val result = hex.foldRight[Option[List[Int]]](Some(Nil)) { (elem, acc) =>
+       for {
+         a  <- acc
+         _  <- if (elem.length == 4 || elem.length == 5) Some(elem) else None
+         cp <- stringToCodePointValue(elem)
+       } yield cp :: a
+     }
+     result.flatMap {
+       case Nil          => None
+       case head :: tail => Some( NonEmptyList(head, tail) )
+     }
+   }
+
 
   import scala.util.Try
 

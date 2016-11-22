@@ -10,24 +10,24 @@ import scalaz.concurrent.Task
 object EmojiService {
 
   /**
-    * Given a String, find the first Emoji.
+    * Given an [[net.model.Emoji]] and a String, return if the `input` contains an emoji.
     * @param emoji Single Emoji
     * @param input String input
-    * @return First Emoji found or None if none is present
+    * @return Some(Emoji) if it's present; otherwise None.
     */
-  def exists(emoji: Emoji, input: String): Option[Emoji] =
-    if(input.contains(emoji.value)) Some(emoji) else None
+  def findAllEmojiInstances(emoji: Emoji, input: String): List[Emoji] =
+    input.sliding(emoji.codePointsSize).toList.flatMap { window =>
+      if(window == emoji.list) List(emoji) else Nil
+    }
 
   /**
-    * Given a String, find all Emojis.
+    * Given a String, find all present Emojis, including duplicates.
     * @param emojis Non-empty list of emojis
     * @param string String input
     * @return All Emojis found in the String.
     */
   def findAll(emojis: List[Emoji], string: String): List[Emoji] =
-    emojis.flatMap { e =>
-      exists(e, string)
-    }
+    emojis.map(findAllEmojiInstances(_, string)).flatten
   
   /**
     * Given a [[java.io.File]], return a [[scalaz.concurrent.Task]]-wrapped Non-empty list of emojis

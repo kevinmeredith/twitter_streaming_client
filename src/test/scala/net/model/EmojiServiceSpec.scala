@@ -69,18 +69,23 @@ class EmojiServiceSpec extends FlatSpec {
     assert(EmojiService.findAll(List(exclamation, fake), input) == List(exclamation))
   }
 
-  "Finding all emojis in an input String" should "find none since only 1 code-point, not the necessary 2, is present" in {
+  "Finding all emojis in an input String" should "find the 'fake' emoji" in {
     val fake      = Emoji.fromString(Some( "fake" ),  "0021-0022" ).get
     val emojiText = codePointsToString(List("0021", "0022")).get
     val input = s"hello \u0021 world $emojiText"
-    assert(EmojiService.findAll(List(fake), input) == Nil)
+    assert(EmojiService.findAll(List(fake), input) == List(fake))
+  }
+
+  "Finding all emojis in an input String" should "find two instances of the same emoji if it shows up twice" in {
+    val fake      = Emoji.fromString(Some( "fake2" ),  "0021-0023" ).get
+    val input = "hello \u0021\u0023 world \u0021\u0023"
+    assert(EmojiService.findAll(List(fake), input) == List(fake, fake))
   }
 
   "Finding all emojis in an input String" should "find an emoji having 2 5-length hex codes" in {
     val emoji      = Emoji.fromString(Some( "REGIONAL INDICATOR SYMBOL LETTERS ZM" ), "1F1FF-1F1F2" ).get
     val unicodeStr = codePointsToString(List("1F1FF", "1F1F2")).get
     val input = s"hi world it's me, $unicodeStr"
-    println("EmojiService.findAll(List(emoji), input):" + EmojiService.findAll(List(emoji), input))
     assert(EmojiService.findAll(List(emoji), input) == List(emoji))
   }
 
