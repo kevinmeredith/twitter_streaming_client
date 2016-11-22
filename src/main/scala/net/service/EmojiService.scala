@@ -16,7 +16,7 @@ object EmojiService {
     * @return First Emoji found or None if none is present
     */
   def exists(emoji: Emoji, input: String): Option[Emoji] =
-    if(input.contains(emoji.unicode)) Some(emoji) else None
+    if(input.contains(emoji.value)) Some(emoji) else None
 
   /**
     * Given a String, find all Emojis.

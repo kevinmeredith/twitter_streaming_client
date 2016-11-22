@@ -34,46 +34,48 @@ object TweetService {
     * total # of tweets, top hash tags, etc.
     */
   def processTweetStream(p: Process[Task, Tweet], emojis: List[Emoji]): Process[Task, Unit] =
-    p.map { tweet =>
-      updateCount(tweet)
-      updateHashTagCount(tweet)
-      updateTweetCountPicture(tweet)
-      updateTweetCountHavingUrl(tweet)
-      updateTweetsWithEmoji(tweet, emojis)
+    p.flatMap { tweet =>
+      Process.eval {
+        for {
+          _ <- updateCount(tweet)
+          _ <- updateHashTagCount(tweet)
+          _ <- updateTweetCountPicture(tweet)
+          _ <- updateTweetCountHavingUrl(tweet)
+          _ <- updateTweetsWithEmoji(tweet, emojis)
+        } yield ()
+      }
     }
 
-  private def updateCount(tweet: Tweet): Unit = {
-    val result = tweetCount.getAndIncrement()
-    () // ignoring result since this function is a side-effect
-  }
+  private def updateCount(tweet: Tweet): Task[Unit] =
+    Task { tweetCount.getAndIncrement(); () }
 
-  private def updateTweetsWithEmoji(tweet: Tweet, emojis: List[Emoji]): Unit = ???
+  private def updateTweetsWithEmoji(tweet: Tweet, emojis: List[Emoji]): Task[Unit] = Task { () }
 
   import java.util.function.{Function => jFunction}
 
   // credit: http://stackoverflow.com/a/26214475/409976
-  private def updateHashTagCount(tweet: Tweet): Unit = {
+  private def updateHashTagCount(tweet: Tweet): Task[Unit] = {
     val update = new jFunction[String, AtomicLong] {
       override def apply(x: String) = new AtomicLong()
     }
 
-    tweet.hashTags.foreach { ht =>
-      hashtags.computeIfAbsent(ht, update).getAndIncrement(); ()
+    Task {
+      tweet.hashTags.foreach { ht =>
+        hashtags.computeIfAbsent(ht, update).getAndIncrement(); ()
+      }
     }
   }
 
-  private def updateTweetCountHavingUrl(tweet: Tweet): Unit =
+  private def updateTweetCountHavingUrl(tweet: Tweet): Task[Unit] =
     tweet.urls match {
-      case _ :: _ => val ignoredResult = tweetsHavingUrl.getAndIncrement; ()
-      case Nil    => () // no need to update count since there's no URLs
+      case _ :: _ => Task { tweetsHavingUrl.getAndIncrement; () }
+      case Nil    => Task.now( () )// no need to update count since there's no URLs
     }
 
-  private def updateTweetCountPicture(tweet: Tweet): Unit =
+  private def updateTweetCountPicture(tweet: Tweet): Task[Unit] =
     findTwitterPic(tweet).orElse(findInstagramUrl(tweet)) match {
-      case Some(_) =>
-        val result = tweetsHavingTwitterOrInstagramPicture.getAndIncrement()
-        () // ignore since this method updates a counter
-      case None    => ()
+      case Some(_) => Task.now {  tweetsHavingTwitterOrInstagramPicture.getAndIncrement(); () }
+      case None    => Task.now( () )
     }
 
   import collection.JavaConverters._
