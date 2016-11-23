@@ -10,13 +10,14 @@ import scalaz.concurrent.Task
 object EmojiService {
 
   /**
-    * Given an [[net.model.Emoji]] and a String, return if the `input` contains an emoji.
+    * Given an [[net.model.Emoji]] and a String, return the input `emoji` for the number
+    * of occurrences that it shows up in the `input` String.
     * @param emoji Single Emoji
     * @param input String input
-    * @return Some(Emoji) if it's present; otherwise None.
+    * @return [[List[net.model.Emoji]] for each separate emoji occurrence in the `input`.
     */
   def findAllEmojiInstances(emoji: Emoji, input: String): List[Emoji] =
-    input.sliding(emoji.codePointsSize).toList.flatMap { window =>
+    input.codePoints.toArray.toList.sliding(emoji.codePointsSize).toList.flatMap { window =>
       if(window == emoji.list) List(emoji) else Nil
     }
 

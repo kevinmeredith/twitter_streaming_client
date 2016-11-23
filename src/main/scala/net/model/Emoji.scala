@@ -15,7 +15,7 @@ object Emoji {
 
   def fromString(name: Option[String], input: String): Option[Emoji] =
     input.split("-").toList match {
-      case uni @ _ :: _  => codePointsToString(uni).map { str => new Emoji(name, str) {} }
+      case uni @ _ :: _  => convertToCodePoints(uni).map { str => new Emoji(name, str) {} }
       case _             => None
   }
 
@@ -26,7 +26,7 @@ object Emoji {
     *
     * Uses https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#String-int:A-int-int-.
     */
-   def codePointsToString(hex: List[String]): Option[NonEmptyList[Int]] = {
+   def convertToCodePoints(hex: List[String]): Option[NonEmptyList[Int]] = {
      val result = hex.foldRight[Option[List[Int]]](Some(Nil)) { (elem, acc) =>
        for {
          a  <- acc
