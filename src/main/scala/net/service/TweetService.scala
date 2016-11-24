@@ -29,6 +29,14 @@ object TweetService {
   // Tweet Counts of any Tweet having at least a single Emoji.
   private val emojiTweets: ConcurrentMap[Emoji, AtomicLong] = new ConcurrentHashMap[Emoji, AtomicLong]()
 
+  // Count of how many tweets have at least 1 emoji
+  private val tweetsWithEmojiCount = new AtomicLong
+
+  // Print Metrics of tweets that have been read so far
+  def printMetrics: Task[Unit] = for {
+    _ <- Task { println("tweetCount: " + tweetCount.get)}
+  } yield ()
+
   /**
     * Given a Stream of Tweet's, mutate state to keep track of metrics, e.g.
     * total # of tweets, top hash tags, etc.
@@ -41,7 +49,7 @@ object TweetService {
           _ <- updateHashTagCount(tweet)
           _ <- updateTweetCountPicture(tweet)
           _ <- updateTweetCountHavingUrl(tweet)
-          _ <- updateTweetsWithEmoji(tweet, emojis)
+          _ <- updateEmojiMetricsPerTweet(tweet, emojis)
         } yield ()
       }
     }
@@ -49,10 +57,20 @@ object TweetService {
   private def updateCount(tweet: Tweet): Task[Unit] =
     Task { tweetCount.getAndIncrement(); () }
 
-  private def updateTweetsWithEmoji(tweet: Tweet, emojis: List[Emoji]): Task[Unit] = {
+  private def updateEmojiMetricsPerTweet(tweet: Tweet, emojis: List[Emoji]): Task[Unit] = {
       val foundEmojis = EmojiService.findAll(emojis, tweet.text)
-      val updated     = foundEmojis.map(e => emojiTweets.computeIfAbsent(e, updateHelper).getAndIncrement())
-      Task.now { updated }.map( _ => ())
+      Task {
+        foundEmojis.foreach { e =>
+          emojiTweets.computeIfAbsent(e, updateHelper).getAndIncrement()
+        }
+        if (foundEmojis.nonEmpty) {
+          tweetsWithEmojiCount.getAndIncrement()
+          ()
+        }
+        else {
+          ()
+        }
+      }
     }
 
   // credit: http://stackoverflow.com/a/26214475/409976
@@ -75,26 +93,6 @@ object TweetService {
       case None    => Task.now( () )
     }
 
-//  private val tweetCount = new AtomicLong
-//
-//  // Hash Tag -> Count
-//  private val hashtags: ConcurrentMap[String, AtomicLong] = new ConcurrentHashMap[String, AtomicLong]()
-//
-//  // URL Domain -> Count
-//  private val domains: ConcurrentMap[String, AtomicLong] = new ConcurrentHashMap[String, AtomicLong]()
-//
-//  // Tweet counts having a URL
-//  private val tweetsHavingUrl = new AtomicLong
-//
-//  // Tweet counts having a Twitter `media` Picture or Instagram URL
-//  // According to http://www.windowscentral.com/how-automatically-post-instagram-photos-twitter,
-//  // "While tweeting links to Instagram photos is still possible, you can no longer view the photos on Twitter."
-//  private val tweetsHavingTwitterOrInstagramPicture = new AtomicLong
-//
-//  // Tweet Counts of any Tweet having at least a single Emoji.
-//  private val emojiTweets: ConcurrentMap[Emoji, AtomicLong] = new ConcurrentHashMap[Emoji, AtomicLong]()
-
-
   // Clear all metrics, i.e. reset the state of each metric
   // Currently, this method is only used in testing. In the event
   // that it needs to be used in `main` code, then verify that
@@ -106,6 +104,7 @@ object TweetService {
     tweetsHavingUrl.set(0)
     tweetsHavingTwitterOrInstagramPicture.set(0)
     emojiTweets.clear()
+    tweetsWithEmojiCount.set(0)
   }
 
   import collection.JavaConverters._
@@ -127,6 +126,11 @@ object TweetService {
   def top5HashTags: List[(String, Long)] = top5[String](hashtags.asScala.toMap)
 
   def top5Emojis: List[(Emoji, Long)]    = top5[Emoji](emojiTweets.asScala.toMap)
+
+  def percentageTweetsHavingEmojis: BigDecimal = {
+    val decimalPercent = tweetsHavingEmojis / BigDecimal.valueOf(tweetCount.get)
+    decimalPercent * BigDecimal.valueOf( 100 )
+  }
 
   def averageTweetPerSecond(start: DateTime): BigDecimal = {
     val fromStart = new Duration(start, DateTime.now())
@@ -154,10 +158,7 @@ object TweetService {
     decimalPercent * BigDecimal.valueOf( 100 )
   }
 
-  def tweetsHavingEmojis: BigDecimal =
-    emojiTweets.asScala.toMap.map {
-      case (_, v) => BigDecimal.valueOf( v.get )
-    }.sum
+  def tweetsHavingEmojis: BigDecimal = BigDecimal.valueOf( tweetsWithEmojiCount.get() )
 
   private def findTwitterPic(tweet: Tweet): Option[String] =
     tweet.twitterPics match {

@@ -14,11 +14,13 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
   "Getting tweet metrics of Stream[Task, Tweet] when taking 100 items" should "show a tweetCount of 100" in {
     val stream: Process[Task, Tweet] = Process.repeatEval(Task.now(tweet1)).take(100)
     val readStream: Unit             = TweetService.processTweetStream(stream, Nil).run.unsafePerformSync
-    TweetService.totalTweets             should be (100)
-    TweetService.percentageHavingUrl     should be (0)
-    TweetService.percentageHavingPicture should be (0)
-    TweetService.top5HashTags            should be (Nil)
-    TweetService.top5Emojis              should be (Nil)
+    TweetService.totalTweets                  should be (100)
+    TweetService.percentageHavingUrl          should be (0)
+    TweetService.percentageHavingPicture      should be (0)
+    TweetService.percentageTweetsHavingEmojis should be (0)
+    TweetService.top5HashTags                 should be (Nil)
+    TweetService.top5Emojis                   should be (Nil)
+
   }
 
   val hashTag1 = "foo"
@@ -33,11 +35,12 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
   s"Getting tweet metrics of Stream[Task, Tweet] when taking $runs items" should s"show a tweetCount of $runs and hash tags" in {
     val stream: Process[Task, Tweet] = Process.repeatEval(Task.now(tweetWith2HashTags)).take(runs)
     val readStream: Unit             = TweetService.processTweetStream(stream, Nil).run.unsafePerformSync
-    TweetService.totalTweets             should be (runs)
-    TweetService.percentageHavingUrl     should be (0)
-    TweetService.percentageHavingPicture should be (0)
-    TweetService.top5HashTags            should be ( List( (hashTag2, 2*runs), (hashTag1, 1*runs))) // recall that tweetWith2HashTags repeats 555 times.
-    TweetService.top5Emojis              should be (Nil)
+    TweetService.totalTweets                  should be (runs)
+    TweetService.percentageHavingUrl          should be (0)
+    TweetService.percentageHavingPicture      should be (0)
+    TweetService.percentageTweetsHavingEmojis should be (0)
+    TweetService.top5HashTags                 should be ( List( (hashTag2, 2*runs), (hashTag1, 1*runs))) // recall that tweetWith2HashTags repeats 555 times.
+    TweetService.top5Emojis                   should be (Nil)
   }
 
   import net.model.EmojiServiceSpec.codePointsToString
@@ -56,11 +59,12 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
   s"Getting tweet metrics of Stream[Task, Tweet] when taking $runs2 items" should s"show a tweetCount of $runs2 and emojis" in {
     val stream: Process[Task, Tweet] = Process.repeatEval(Task.now(tweetWith2Emojis)).take(runs2)
     val readStream: Unit             = TweetService.processTweetStream(stream, List(emojiSingleCodePoint, emojiTwoCodePoints)).run.unsafePerformSync
-    TweetService.totalTweets             should be (runs2)
-    TweetService.percentageHavingUrl     should be (0)
-    TweetService.percentageHavingPicture should be (0)
-    TweetService.top5HashTags            should be (Nil)
-    TweetService.top5Emojis              should be (List( (emojiTwoCodePoints, runs2 * 2), (emojiSingleCodePoint, runs2) ) )
+    TweetService.totalTweets                  should be (runs2)
+    TweetService.percentageHavingUrl          should be (0)
+    TweetService.percentageTweetsHavingEmojis should be (100)
+    TweetService.percentageHavingPicture      should be (0)
+    TweetService.top5HashTags                 should be (Nil)
+    TweetService.top5Emojis                   should be (List( (emojiTwoCodePoints, runs2 * 2), (emojiSingleCodePoint, runs2) ) )
   }
 
   import TweetService.InstagramPhotoPrefix
@@ -76,11 +80,12 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
   s"Getting tweet metrics of Stream[Task, Tweet] when taking $runs3 items" should s"show a tweetCount of $runs3, no emojis or hash tags, but present twitter and instagram pics present" in {
     val stream: Process[Task, Tweet] = Process.repeatEval(Task.now(tweetWithInstagramAndTwitterPic)).take(runs3)
     val readStream: Unit             = TweetService.processTweetStream(stream, List(emojiSingleCodePoint, emojiTwoCodePoints)).run.unsafePerformSync
-    TweetService.totalTweets             should be (runs3)
-    TweetService.percentageHavingUrl     should be (100)
-    TweetService.percentageHavingPicture should be (100)
-    TweetService.top5HashTags            should be (Nil)
-    TweetService.top5Emojis              should be (Nil)
+    TweetService.totalTweets                  should be (runs3)
+    TweetService.percentageHavingUrl          should be (100)
+    TweetService.percentageHavingPicture      should be (100)
+    TweetService.percentageTweetsHavingEmojis should be (0)
+    TweetService.top5HashTags                 should be (Nil)
+    TweetService.top5Emojis                   should be (Nil)
   }
   
   // net.service.TweetService contains mutable state, i.e. for metrics.

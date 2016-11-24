@@ -1,11 +1,8 @@
 package net.service
 
-import cats.data.Xor
-import io.circe.DecodingFailure
 import org.http4s.{Request, Uri}
 import org.http4s.client.blaze.PooledHttp1Client
 import org.http4s.client.oauth1
-import net.model.Tweet
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 import jawnstreamz._
@@ -18,9 +15,7 @@ trait StatusRepository {
   /**
     * Return a Stream of [[net.model.Tweet]] with effect [[scalaz.concurrent.Task]].
     */
-  def stati: Process[Task, Xor[DecodingFailure, Tweet]]
-
-  def stati(x: Int): Process[Task, io.circe.Json]
+  def stati: Process[Task, io.circe.Json]
 }
 
 object StatusRepositoryImpl extends StatusRepository {
@@ -42,27 +37,16 @@ object StatusRepositoryImpl extends StatusRepository {
   private val AccessToken       = "23021955-NeZKh2JAYW1Q5y0Ki9RQYtBtydNxN5ObHm7lNdIw2"
   private val AccessTokenSecret = "o6SZfroTRuR5VmDqYwYvH8N0ea2sD3DNn0TcgYqJuJolZ"
 
-  // stati is plural of status
-  override def stati: Process[Task, Xor[DecodingFailure, Tweet]] = {
+  override def stati: Process[Task, io.circe.Json] = {
     val token = oauth1.Token(AccessToken, AccessTokenSecret)
     for {
-      uri  <- Process.eval(Task.fromDisjunction(Uri.fromString(TwitterStreamingSample)))
+      uri    <- Process.eval(Task.fromDisjunction(Uri.fromString(TwitterStreamingSample)))
       twapi  = Request(uri = uri)
       signed = oauth1.signRequest(twapi, oauthConsumer, callback = None, verifier = None, token = Some(token))
-      req  <- Process.eval(signed)
-      res  <- client.streaming(req)(resp => resp.body.parseJsonStream)
-    } yield res.as[Tweet]
-  }
-
-  override def stati(x: Int): Process[Task, io.circe.Json] = {
-    val token = oauth1.Token(AccessToken, AccessTokenSecret)
-    for {
-      uri  <- Process.eval(Task.fromDisjunction(Uri.fromString(TwitterStreamingSample)))
-      twapi  = Request(uri = uri)
-      signed = oauth1.signRequest(twapi, oauthConsumer, callback = None, verifier = None, token = Some(token))
-      req  <- Process.eval(signed)
-      res  <- client.streaming(req)(resp => resp.body.parseJsonStream)
+      req    <- Process.eval(signed)
+      res    <- client.streaming(req)(resp => resp.body.parseJsonStream)
     } yield res
   }
+
 
 }
