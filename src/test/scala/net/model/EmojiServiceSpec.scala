@@ -90,6 +90,18 @@ class EmojiServiceSpec extends FlatSpec {
     assert(EmojiService.findAll(List(fake), input) == List(fake, fake))
   }
 
+  "Finding all emojis in an input String" should "find no instances since the code points were reversed" in {
+    val fake      = Emoji.fromString(Some( "fake2" ),  "0021-0023" ).get
+    val input = "hello world \u0023\u0021"
+    assert(EmojiService.findAll(List(fake), input) == Nil)
+  }
+
+  "Finding all emojis in an input String" should "find no instances since the code points were separated by a space" in {
+    val fake      = Emoji.fromString(Some( "fake2" ),  "0021-0023" ).get
+    val input = "hello world \u0023 \u0021"
+    assert(EmojiService.findAll(List(fake), input) == Nil)
+  }
+
   "Finding all emojis in an input String" should "find an emoji having 2 5-length hex codes" in {
     val emoji              = Emoji.fromString(Some( "REGIONAL INDICATOR SYMBOL LETTERS ZM" ), "1F1FF-1F1F2" ).get
     val codePointStr       = convertToCodePoints(List("1F1FF", "1F1F2")).map(codePointsToString).get
