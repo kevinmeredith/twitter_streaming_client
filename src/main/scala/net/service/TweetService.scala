@@ -27,7 +27,7 @@ object TweetService {
   private val tweetsHavingTwitterOrInstagramPicture = new AtomicLong
 
   // Tweet Counts of any Tweet having at least a single Emoji.
-  private val tweetsHavingEmoji = new AtomicLong
+  private val emojiTweets: ConcurrentMap[Emoji, AtomicLong] = new ConcurrentHashMap[Emoji, AtomicLong]()
 
   /**
     * Given a Stream of Tweet's, mutate state to keep track of metrics, e.g.
@@ -49,22 +49,19 @@ object TweetService {
   private def updateCount(tweet: Tweet): Task[Unit] =
     Task { tweetCount.getAndIncrement(); () }
 
-  private def updateTweetsWithEmoji(tweet: Tweet, emojis: List[Emoji]): Task[Unit] = Task { () }
-
-  import java.util.function.{Function => jFunction}
+  private def updateTweetsWithEmoji(tweet: Tweet, emojis: List[Emoji]): Task[Unit] = {
+      val foundEmojis = EmojiService.findAll(emojis, tweet.text)
+      val updated     = foundEmojis.map(e => emojiTweets.computeIfAbsent(e, updateHelper).getAndIncrement())
+      Task.now { updated }.map( _ => ())
+    }
 
   // credit: http://stackoverflow.com/a/26214475/409976
-  private def updateHashTagCount(tweet: Tweet): Task[Unit] = {
-    val update = new jFunction[String, AtomicLong] {
-      override def apply(x: String) = new AtomicLong()
-    }
-
+  private def updateHashTagCount(tweet: Tweet): Task[Unit] =
     Task {
       tweet.hashTags.foreach { ht =>
-        hashtags.computeIfAbsent(ht, update).getAndIncrement(); ()
+        hashtags.computeIfAbsent(ht, updateHelper).getAndIncrement(); ()
       }
     }
-  }
 
   private def updateTweetCountHavingUrl(tweet: Tweet): Task[Unit] =
     tweet.urls match {
@@ -78,6 +75,39 @@ object TweetService {
       case None    => Task.now( () )
     }
 
+//  private val tweetCount = new AtomicLong
+//
+//  // Hash Tag -> Count
+//  private val hashtags: ConcurrentMap[String, AtomicLong] = new ConcurrentHashMap[String, AtomicLong]()
+//
+//  // URL Domain -> Count
+//  private val domains: ConcurrentMap[String, AtomicLong] = new ConcurrentHashMap[String, AtomicLong]()
+//
+//  // Tweet counts having a URL
+//  private val tweetsHavingUrl = new AtomicLong
+//
+//  // Tweet counts having a Twitter `media` Picture or Instagram URL
+//  // According to http://www.windowscentral.com/how-automatically-post-instagram-photos-twitter,
+//  // "While tweeting links to Instagram photos is still possible, you can no longer view the photos on Twitter."
+//  private val tweetsHavingTwitterOrInstagramPicture = new AtomicLong
+//
+//  // Tweet Counts of any Tweet having at least a single Emoji.
+//  private val emojiTweets: ConcurrentMap[Emoji, AtomicLong] = new ConcurrentHashMap[Emoji, AtomicLong]()
+
+
+  // Clear all metrics, i.e. reset the state of each metric
+  // Currently, this method is only used in testing. In the event
+  // that it needs to be used in `main` code, then verify that
+  // each of these reset methods runs concurrently without race conditions.
+  private [service] def clearMetrics(): Unit = {
+    tweetCount.set(0)
+    hashtags.clear()
+    domains.clear()
+    tweetsHavingUrl.set(0)
+    tweetsHavingTwitterOrInstagramPicture.set(0)
+    emojiTweets.clear()
+  }
+
   import collection.JavaConverters._
   import scala.collection.SortedMap
 
@@ -85,14 +115,18 @@ object TweetService {
   def totalTweets: Long =
     tweetCount.get
 
-  // Return top-5 Hash Tags by count
-  def top5HashTags: List[(String, Long)] = {
-    val reversed: List[(Long, String)] = hashtags.asScala.toList.map { case (ht, count) => (count.get, ht) }
-    val map                            = SortedMap[Long, String]( reversed : _*)(Ordering.ordered[Long].reverse)
-    map.take(5).toList.collect {
+  // Return top 5 elements by Long count, i.e. number of occurrences, in Map[A, Long].
+  private def top5[A](map: Map[A, AtomicLong]): List[(A, Long)] = {
+    val reversed: List[(Long, A)] = map.map { case (a, count) => (count.get, a) }.toList
+    val sorted                    = SortedMap[Long, A]( reversed : _* )(Ordering.ordered[Long].reverse)
+    sorted.take(5).toList.collect {
       case (count, ht) => (ht, count)
     }
   }
+
+  def top5HashTags: List[(String, Long)] = top5[String](hashtags.asScala.toMap)
+
+  def top5Emojis: List[(Emoji, Long)]    = top5[Emoji](emojiTweets.asScala.toMap)
 
   def averageTweetPerSecond(start: DateTime): BigDecimal = {
     val fromStart = new Duration(start, DateTime.now())
@@ -120,6 +154,11 @@ object TweetService {
     decimalPercent * BigDecimal.valueOf( 100 )
   }
 
+  def tweetsHavingEmojis: BigDecimal =
+    emojiTweets.asScala.toMap.map {
+      case (_, v) => BigDecimal.valueOf( v.get )
+    }.sum
+
   private def findTwitterPic(tweet: Tweet): Option[String] =
     tweet.twitterPics match {
       case h :: t => Some(h)
@@ -132,6 +171,12 @@ object TweetService {
     val InstagramPhotoPrefix = "WWW.INSTAGRAM.COM/P"
 
     tweet.urls.find(_.toUpperCase.startsWith(InstagramPhotoPrefix))
+  }
+
+  import java.util.function.{Function => jFunction}
+
+  private def updateHelper[A] = new jFunction[A, AtomicLong] {
+    override def apply(x: A) = new AtomicLong()
   }
 
 }
