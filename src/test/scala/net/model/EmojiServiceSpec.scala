@@ -6,14 +6,18 @@ import cats.data.NonEmptyList
 import net.service.EmojiService
 import org.scalatest.FlatSpec
 
-class EmojiServiceSpec extends FlatSpec {
-
+object EmojiServiceSpec {
   // Given a [[cats.data.NonEmptyList]] of Int, where each
   // element represents a Code Point, return its String representation.
   def codePointsToString(codePoints: NonEmptyList[Int]): String = {
     val cps = codePoints.head :: codePoints.tail
     new String(cps.toArray, 0, cps.length)
   }
+}
+
+class EmojiServiceSpec extends FlatSpec {
+
+  import EmojiServiceSpec.codePointsToString
 
   "Reading the emoji-shortened.json file" should "produce a valid List of [[net.model.Emoji]] of length 4's." in {
     val url      = this.getClass().getResource("/emoji-shortened.json")

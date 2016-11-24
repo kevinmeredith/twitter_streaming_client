@@ -165,13 +165,12 @@ object TweetService {
       case Nil    => None
     }
 
-  private def findInstagramUrl(tweet: Tweet): Option[String] = {
-    // Assumption - I saw that a handful of Instagram photos' URLs
-    // starts with the following prefix
-    val InstagramPhotoPrefix = "WWW.INSTAGRAM.COM/P"
+  // Assumption - I saw that a handful of Instagram photos' URLs
+  // starting with the following prefix
+  val InstagramPhotoPrefix = "WWW.INSTAGRAM.COM/P"
 
+  private def findInstagramUrl(tweet: Tweet): Option[String] =
     tweet.urls.find(_.toUpperCase.startsWith(InstagramPhotoPrefix))
-  }
 
   import java.util.function.{Function => jFunction}
 
