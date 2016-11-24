@@ -34,7 +34,7 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     TweetService.totalTweets             should be (runs)
     TweetService.percentageHavingUrl     should be (0)
     TweetService.percentageHavingPicture should be (0)
-    TweetService.top5HashTags            should be ( List( (hashTag2, 2*555), (hashTag1, 1*555))) // recall that tweetWith2HashTags repeats 555 times.
+    TweetService.top5HashTags            should be ( List( (hashTag2, 2*runs), (hashTag1, 1*runs))) // recall that tweetWith2HashTags repeats 555 times.
     TweetService.top5Emojis              should be (Nil)
   }
 
