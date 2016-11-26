@@ -41,17 +41,19 @@ object TweetService {
     * Given a Stream of Tweet's, mutate state to keep track of metrics, e.g.
     * total # of tweets, top hash tags, etc.
     */
-  def processTweetStream(p: Process[Task, Tweet], emojis: List[Emoji]): Process[Task, Unit] =
-    p.flatMap { tweet =>
-      Process.eval {
-        for {
-          _ <- updateCount(tweet)
-          _ <- updateHashTagCount(tweet)
-          _ <- updateTweetCountPicture(tweet)
-          _ <- updateTweetCountHavingUrl(tweet)
-          _ <- updateEmojiMetricsPerTweet(tweet, emojis)
-        } yield ()
-      }
+  def processTweetStream(p: Process[Task, Option[Tweet]], emojis: List[Emoji]): Process[Task, Unit] =
+    p.flatMap {
+      case Some(tweet) =>
+        Process.eval {
+          for {
+            _ <- updateCount(tweet)
+            _ <- updateHashTagCount(tweet)
+            _ <- updateTweetCountPicture(tweet)
+            _ <- updateTweetCountHavingUrl(tweet)
+            _ <- updateEmojiMetricsPerTweet(tweet, emojis)
+          } yield ()
+        }
+      case None => Process.eval( Task.now( () ) )
     }
 
   private def updateCount(tweet: Tweet): Task[Unit] =
