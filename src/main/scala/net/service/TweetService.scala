@@ -32,10 +32,35 @@ object TweetService {
   // Count of how many tweets have at least 1 emoji
   private val tweetsWithEmojiCount = new AtomicLong
 
-  // Print Metrics of tweets that have been read so far
-  def printMetrics: Task[Unit] = for {
-    _ <- Task { println("tweetCount: " + tweetCount.get)}
-  } yield ()
+  case class Metrics(tweetCount: Long,
+                     averageTweetsPerHour: BigDecimal,
+                     averageTweetsPerMin: BigDecimal,
+                     averageTweetsPerSec: BigDecimal,
+                     percentTweetsWithEmoji: BigDecimal,
+                     topEmojis: List[(Emoji, Long)],
+                     topHashTags: List[(String, Long)],
+                     percentOfTweetsWithUrl: BigDecimal,
+                     percentOfTweetContainingTwitterOrInstagramPic: BigDecimal,
+                     topUrlDomains: List[(String, Long)],
+                     start: DateTime,
+                     metricsCollection: DateTime
+                    )
+
+  def metrics(start: DateTime): Metrics =
+    Metrics(
+      tweetCount                                    = totalTweets,
+      averageTweetsPerHour                          = averageTweetPerHour(start),
+      averageTweetsPerMin                           = averageTweetPerMinute(start),
+      averageTweetsPerSec                           = averageTweetPerSecond(start),
+      percentTweetsWithEmoji                        = percentageTweetsHavingEmojis,
+      topEmojis                                     = top5Emojis,
+      topHashTags                                   = top5HashTags,
+      percentOfTweetsWithUrl                        = percentageHavingUrl,
+      percentOfTweetContainingTwitterOrInstagramPic = percentageHavingPicture,
+      topUrlDomains                                 = top5Domains,
+      start                                         = start,
+      metricsCollection                             = DateTime.now
+    )
 
   /**
     * Given a Stream of Tweet's, mutate state to keep track of metrics, e.g.
@@ -48,12 +73,20 @@ object TweetService {
           for {
             _ <- updateCount(tweet)
             _ <- updateHashTagCount(tweet)
+            _ <- updateEmojiMetricsPerTweet(tweet, emojis)
             _ <- updateTweetCountPicture(tweet)
             _ <- updateTweetCountHavingUrl(tweet)
-            _ <- updateEmojiMetricsPerTweet(tweet, emojis)
+            _ <- updateDomains(tweet)
           } yield ()
         }
       case None => Process.eval( Task.now( () ) )
+    }
+
+  private def updateDomains(tweet: Tweet): Task[Unit] =
+    Task {
+      tweet.urls.foreach { url =>
+        domains.computeIfAbsent(url, updateHelper).getAndIncrement()
+      }
     }
 
   private def updateCount(tweet: Tweet): Task[Unit] =
@@ -110,24 +143,27 @@ object TweetService {
   }
 
   import collection.JavaConverters._
-  import scala.collection.SortedMap
 
   // Retrieve total number of tweets received so far
   def totalTweets: Long =
     tweetCount.get
 
+  private def ordering[A] = new Ordering[(Long, A)] {
+    override def compare(x: (Long, A), y: (Long, A)): Int =
+      Ordering.ordered[Long].reverse.compare(x._1, y._1)
+  }
+
   // Return top 5 elements by Long count, i.e. number of occurrences, in Map[A, Long].
   private def top5[A](map: Map[A, AtomicLong]): List[(A, Long)] = {
-    val reversed: List[(Long, A)] = map.map { case (a, count) => (count.get, a) }.toList
-    val sorted                    = SortedMap[Long, A]( reversed : _* )(Ordering.ordered[Long].reverse)
-    sorted.take(5).toList.collect {
-      case (count, ht) => (ht, count)
-    }
+    val orderedByCountDescending: List[(A, Long)] = map.toList.map { case (k, v) => (k, v.get) }.sortBy(_._2)(Ordering.ordered[Long].reverse)
+    orderedByCountDescending.take(5)
   }
 
   def top5HashTags: List[(String, Long)] = top5[String](hashtags.asScala.toMap)
 
   def top5Emojis: List[(Emoji, Long)]    = top5[Emoji](emojiTweets.asScala.toMap)
+
+  def top5Domains: List[(String, Long)]  = top5[String](domains.asScala.toMap)
 
   def percentageTweetsHavingEmojis: BigDecimal = {
     val decimalPercent = tweetsHavingEmojis / BigDecimal.valueOf(tweetCount.get)
@@ -136,17 +172,26 @@ object TweetService {
 
   def averageTweetPerSecond(start: DateTime): BigDecimal = {
     val fromStart = new Duration(start, DateTime.now())
-    BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardSeconds)
+    if (fromStart.getStandardSeconds == 0)
+      0
+    else
+      BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardSeconds)
   }
 
   def averageTweetPerMinute(start: DateTime): BigDecimal = {
     val fromStart = new Duration(start, DateTime.now())
-    BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardMinutes)
+    if (fromStart.getStandardMinutes == 0)
+      0
+    else
+      BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardMinutes)
   }
 
   def averageTweetPerHour(start: DateTime): BigDecimal = {
     val fromStart = new Duration(start, DateTime.now())
-    BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardHours)
+    if (fromStart.getStandardHours == 0)
+      0
+    else
+      BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardHours)
   }
 
   def percentageHavingUrl: BigDecimal =
