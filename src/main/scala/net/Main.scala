@@ -1,14 +1,19 @@
 package net
 
 import java.io.File
+
 import cats.data.Xor
 import net.model.Tweet
 import io.circe._
 import net.service.EmojiService
 import net.service.TweetService.processTweetStream
+
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 import org.http4s.server.{Server, ServerApp}
+import net.web.MetricsService.metrics
+import org.http4s.server.blaze.BlazeBuilder
+import org.joda.time.DateTime
 
 object Main extends ServerApp {
 
@@ -16,12 +21,15 @@ object Main extends ServerApp {
 
 	override def server(args: List[String]): Task[Server] = {
 		for {
+      s <- {
+        BlazeBuilder
+          .bindHttp(8080, "localhost")
+          .mountService(metrics(DateTime.now), "/api")
+          .start
+      }
 			_ <- tweetStream
-			s <- server
 		} yield s
 	}
-
-	private def server: Task[Server] = ???
 
 	private def tweetStream: Task[Unit] = for {
 		file   <- Task { new File(this.getClass.getResource("/emoji.json").toURI) }

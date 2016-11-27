@@ -44,7 +44,23 @@ object TweetService {
                      topUrlDomains: List[(String, Long)],
                      start: DateTime,
                      metricsCollection: DateTime
-                    )
+                    ) {
+    override def toString: String =
+      s"""
+         |tweetCount:           ${this.tweetCount}                                    \n
+         |averageTweetsPerHour: ${this.averageTweetsPerHour}                          \n
+         |averageTweetsPerMin:  ${this.averageTweetsPerMin}                           \n
+         |averageTweetsPerSec : ${this.averageTweetsPerSec}                          \n
+         |% with emoji(s)       ${this.percentTweetsWithEmoji}                        \n
+         |top 5 emojis          ${this.topEmojis}                                     \n
+         |top 5 hash tags       ${this.topHashTags}                                   \n
+         |% with url(s)         ${this.percentOfTweetsWithUrl}                        \n
+         |% with twitter/insta  ${this.percentOfTweetContainingTwitterOrInstagramPic} \n
+         |top 5 urls            ${this.topUrlDomains}                                 \n
+         |started stream        ${start}                                              \n
+         |time now              ${start}                                              \n
+       """.stripMargin
+  }
 
   def metrics(start: DateTime): Metrics =
     Metrics(
