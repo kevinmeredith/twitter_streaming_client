@@ -50,7 +50,7 @@ object TweetService {
          |tweetCount:           ${this.tweetCount}                                    \n
          |averageTweetsPerHour: ${this.averageTweetsPerHour}                          \n
          |averageTweetsPerMin:  ${this.averageTweetsPerMin}                           \n
-         |averageTweetsPerSec : ${this.averageTweetsPerSec}                          \n
+         |averageTweetsPerSec : ${this.averageTweetsPerSec}                           \n
          |% with emoji(s)       ${this.percentTweetsWithEmoji}                        \n
          |top 5 emojis          ${this.topEmojis}                                     \n
          |top 5 hash tags       ${this.topHashTags}                                   \n
@@ -58,7 +58,7 @@ object TweetService {
          |% with twitter/insta  ${this.percentOfTweetContainingTwitterOrInstagramPic} \n
          |top 5 urls            ${this.topUrlDomains}                                 \n
          |started stream        ${start}                                              \n
-         |time now              ${start}                                              \n
+         |time now              ${metricsCollection}                                  \n
        """.stripMargin
   }
 
