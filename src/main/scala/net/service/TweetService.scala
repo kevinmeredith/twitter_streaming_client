@@ -32,6 +32,27 @@ object TweetService {
   // Count of how many tweets have at least 1 emoji
   private val tweetsWithEmojiCount = new AtomicLong
 
+
+  //def scan[B](b: B)(f: (B,O) => B): Process[F,B] =
+
+  def f(tweets: Process[Task, Tweet], start: DateTime): Process[Task, Metrics] = {
+    val accumulator = Metrics(0, 0, 0, 0, 0, Nil, Nil, 0, 0, Nil)
+
+    tweets.scan(accumulator) { (acc, elem) =>
+      val now = DateTime.now
+      val newTweetCount = acc.tweetCount + 1
+      acc.copy(
+        tweetCount             = newTweetCount,
+        averageTweetsPerHour   = averageTweetsPerHour(start, now, newTweetCount),
+        averageTweetsPerMin    = averageTweetsPerMinute(start, now, newTweetCount),
+        averageTweetsPerSec    = averageTweetsPerSecond(start, now, newTweetCount),
+        percentTweetsWithEmoji =
+
+      )
+    }
+  }
+
+
   case class Metrics(tweetCount: Long,
                      averageTweetsPerHour: BigDecimal,
                      averageTweetsPerMin: BigDecimal,
@@ -41,9 +62,7 @@ object TweetService {
                      topHashTags: List[(String, Long)],
                      percentOfTweetsWithUrl: BigDecimal,
                      percentOfTweetContainingTwitterOrInstagramPic: BigDecimal,
-                     topUrlDomains: List[(String, Long)],
-                     start: DateTime,
-                     metricsCollection: DateTime
+                     topUrlDomains: List[(String, Long)]
                     ) {
     override def toString: String =
       s"""
@@ -56,9 +75,7 @@ object TweetService {
          |top 5 hash tags       ${this.topHashTags}                                   \n
          |% with url(s)         ${this.percentOfTweetsWithUrl}                        \n
          |% with twitter/insta  ${this.percentOfTweetContainingTwitterOrInstagramPic} \n
-         |top 5 urls            ${this.topUrlDomains}                                 \n
-         |started stream        ${start}                                              \n
-         |time now              ${metricsCollection}                                  \n
+         |top 5 urls            ${this.topUrlDomains}
        """.stripMargin
   }
 
@@ -73,9 +90,7 @@ object TweetService {
       topHashTags                                   = top5HashTags,
       percentOfTweetsWithUrl                        = percentageHavingUrl,
       percentOfTweetContainingTwitterOrInstagramPic = percentageHavingPicture,
-      topUrlDomains                                 = top5Domains,
-      start                                         = start,
-      metricsCollection                             = DateTime.now
+      topUrlDomains                                 = top5Domains
     )
 
   /**
@@ -186,28 +201,31 @@ object TweetService {
     decimalPercent * BigDecimal.valueOf( 100 )
   }
 
-  def averageTweetPerSecond(start: DateTime): BigDecimal = {
-    val fromStart = new Duration(start, DateTime.now())
-    if (fromStart.getStandardSeconds == 0)
+  def averageTweetsPerSecond(start: DateTime, now: DateTime, tweetCount: Long): BigDecimal = {
+    val duration       = new Duration(start, now)
+    val secondsElapsed = duration.getStandardSeconds
+    if (secondsElapsed == 0)
       0
     else
-      BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardSeconds)
+      BigDecimal.valueOf(tweetCount) / BigDecimal.valueOf(secondsElapsed)
   }
 
-  def averageTweetPerMinute(start: DateTime): BigDecimal = {
-    val fromStart = new Duration(start, DateTime.now())
-    if (fromStart.getStandardMinutes == 0)
+  def averageTweetsPerMinute(start: DateTime, now: DateTime, tweetCount: Long): BigDecimal = {
+    val duration       = new Duration(start, now)
+    val minutesElapsed = duration.getStandardMinutes
+    if (minutesElapsed == 0)
       0
     else
-      BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardMinutes)
+      BigDecimal.valueOf(tweetCount) / BigDecimal.valueOf(minutesElapsed)
   }
 
-  def averageTweetPerHour(start: DateTime): BigDecimal = {
-    val fromStart = new Duration(start, DateTime.now())
-    if (fromStart.getStandardHours == 0)
+  def averageTweetsPerHour(start: DateTime, now: DateTime, tweetCount: Long): BigDecimal = {
+    val duration       = new Duration(start, now)
+    val hoursElapsed = duration.getStandardHours
+    if (hoursElapsed == 0)
       0
     else
-      BigDecimal.valueOf(tweetCount.get()) / BigDecimal.valueOf(fromStart.getStandardHours)
+      BigDecimal.valueOf(tweetCount) / BigDecimal.valueOf(hoursElapsed)
   }
 
   def percentageHavingUrl: BigDecimal =
@@ -216,8 +234,8 @@ object TweetService {
   def percentageHavingPicture: BigDecimal =
       percentage ( tweetsHavingTwitterOrInstagramPicture.get )
 
-  private def percentage(count: Long): BigDecimal = {
-    val decimalPercent = BigDecimal.valueOf( count ) / BigDecimal.valueOf ( tweetCount.get )
+  private def percentage(count: Long, totalTweetCount: Long): BigDecimal = {
+    val decimalPercent = BigDecimal.valueOf( count ) / BigDecimal.valueOf ( totalTweetCount )
     decimalPercent * BigDecimal.valueOf( 100 )
   }
 
