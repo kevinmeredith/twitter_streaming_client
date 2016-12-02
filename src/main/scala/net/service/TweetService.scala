@@ -3,66 +3,79 @@ package net.service
 import org.joda.time.{DateTime, Duration}
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
-import net.model.{ Emoji, Tweet }
+
+import net.model.{Emoji, HashTag, Tweet}
+
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 
 object TweetService {
-
-  // Total tweets
-  private val tweetCount = new AtomicLong
-
-  // Hash Tag -> Count
-  private val hashtags: ConcurrentMap[String, AtomicLong] = new ConcurrentHashMap[String, AtomicLong]()
-
-  // URL Domain -> Count
-  private val domains: ConcurrentMap[String, AtomicLong] = new ConcurrentHashMap[String, AtomicLong]()
-
-  // Tweet counts having a URL
-  private val tweetsHavingUrl = new AtomicLong
-
-  // Tweet counts having a Twitter `media` Picture or Instagram URL
-  // According to http://www.windowscentral.com/how-automatically-post-instagram-photos-twitter,
-  // "While tweeting links to Instagram photos is still possible, you can no longer view the photos on Twitter."
-  private val tweetsHavingTwitterOrInstagramPicture = new AtomicLong
-
-  // Tweet Counts of any Tweet having at least a single Emoji.
-  private val emojiTweets: ConcurrentMap[Emoji, AtomicLong] = new ConcurrentHashMap[Emoji, AtomicLong]()
-
-  // Count of how many tweets have at least 1 emoji
-  private val tweetsWithEmojiCount = new AtomicLong
-
-
   //def scan[B](b: B)(f: (B,O) => B): Process[F,B] =
 
-  def f(tweets: Process[Task, Tweet], start: DateTime): Process[Task, Metrics] = {
+  def f(tweets: Process[Task, Tweet], emojis: List[Emoji], start: DateTime): Process[Task, Metrics] = {
     val accumulator = Metrics(0, 0, 0, 0, 0, Nil, Nil, 0, 0, Nil)
 
-    tweets.scan(accumulator) { (acc, elem) =>
-      val now = DateTime.now
-      val newTweetCount = acc.tweetCount + 1
-      acc.copy(
-        tweetCount             = newTweetCount,
-        averageTweetsPerHour   = averageTweetsPerHour(start, now, newTweetCount),
-        averageTweetsPerMin    = averageTweetsPerMinute(start, now, newTweetCount),
-        averageTweetsPerSec    = averageTweetsPerSecond(start, now, newTweetCount),
-        percentTweetsWithEmoji =
+    tweets.scan(accumulator) { (acc, tweet) =>
 
+      val now                           = DateTime.now
+      val tweetCount                    = acc.tweetCount + 1
+      val singleTweetEmojis             = EmojiService.findAll(emojis, tweet.text)
+      val runningTweetedEmojis          = singleTweetEmojis ++ acc.tweetedEmojis
+      val runningTweetsWithEmojisCount  = singleTweetEmojis match {
+        case Nil    => acc.tweetsHavingEmojis
+        case _ :: _ => acc.tweetsHavingEmojis + 1
+      }
+      val runningTweetsWithUrlCount = tweet.urls map {
+        case _ :: _ => acc.tweetsHavingUrl + 1
+        case Nil    => acc.tweetsHavingUrl
+      }
+      val runningTweetedUrls = tweet.urls ++ acc.tweetedUrls
+      val runningTweetsWithHashTagsCount = tweet.hashTags match {
+        case Nil    => acc.tweetsHavingHashTag
+        case _ :: _ => acc.tweetsHavingHashTag + 1
+      }
+      val runningTweetedHashTags = tweet.hashTags ++ acc.tweetedHashTags
+
+      acc.copy(
+        tweetCount             = tweetCount,
+        averageTweetsPerHour   = averageTweetsPerHour(start, now, tweetCount),
+        averageTweetsPerMin    = averageTweetsPerMinute(start, now, tweetCount),
+        averageTweetsPerSec    = averageTweetsPerSecond(start, now, tweetCount),
+        percentTweetsWithEmoji = percentage(tweetsHavingEmojis, tweetCount),
+        tweetedEmojis          = runningTweetedEmojis,
+        tweetsHavingEmojis     = runningTweetsWithEmojisCount,
+        topEmojis              = ???,
+        tweetedHashTags        = runningTweetedHashTags,
+        topHashTags            = ???,
+        tweetedUrls            = runningTweetsWithUrlCount,
+        tweetsHavingUrl        = runningTweetedUrls,
+        topUrlDomains          = ???
+        percentOfTweetsWithUrl = percentage(runningTweetedUrls, tweetCount),
+        twitterOrInstagramPic  = ???,
+        tweetsHavingTwitterOrInstagramPic = ???,
+        percentOfTweetContainingTwitterOrInstagramPic = percentage(???, tweetCount)
       )
     }
   }
 
-
-  case class Metrics(tweetCount: Long,
+  case class Metrics(tweetCount: BigDecimal,
                      averageTweetsPerHour: BigDecimal,
                      averageTweetsPerMin: BigDecimal,
                      averageTweetsPerSec: BigDecimal,
                      percentTweetsWithEmoji: BigDecimal,
+                     tweetedEmojis: List[Emoji],
+                     tweetsHavingEmojis: BigDecimal,
                      topEmojis: List[(Emoji, Long)],
+                     tweetsHavingHashTag: BigDecimal,
+                     tweetedHashTags: List[String],
                      topHashTags: List[(String, Long)],
-                     percentOfTweetsWithUrl: BigDecimal,
-                     percentOfTweetContainingTwitterOrInstagramPic: BigDecimal,
+                     tweetedUrls: List[String],
+                     tweetsHavingUrl: BigDecimal,
                      topUrlDomains: List[(String, Long)]
+                     percentOfTweetsWithUrl: BigDecimal,
+                     twitterOrInstagramPic: List[String],
+                     tweetsHavingTwitterOrInstagramPic: BigDecimal,
+                     percentOfTweetContainingTwitterOrInstagramPic: BigDecimal
                     ) {
     override def toString: String =
       s"""
@@ -78,20 +91,6 @@ object TweetService {
          |top 5 urls            ${this.topUrlDomains}
        """.stripMargin
   }
-
-  def metrics(start: DateTime): Metrics =
-    Metrics(
-      tweetCount                                    = totalTweets,
-      averageTweetsPerHour                          = averageTweetPerHour(start),
-      averageTweetsPerMin                           = averageTweetPerMinute(start),
-      averageTweetsPerSec                           = averageTweetPerSecond(start),
-      percentTweetsWithEmoji                        = percentageTweetsHavingEmojis,
-      topEmojis                                     = top5Emojis,
-      topHashTags                                   = top5HashTags,
-      percentOfTweetsWithUrl                        = percentageHavingUrl,
-      percentOfTweetContainingTwitterOrInstagramPic = percentageHavingPicture,
-      topUrlDomains                                 = top5Domains
-    )
 
   /**
     * Given a Stream of Tweet's, mutate state to keep track of metrics, e.g.
@@ -219,13 +218,13 @@ object TweetService {
       BigDecimal.valueOf(tweetCount) / BigDecimal.valueOf(minutesElapsed)
   }
 
-  def averageTweetsPerHour(start: DateTime, now: DateTime, tweetCount: Long): BigDecimal = {
+  def averageTweetsPerHour(start: DateTime, now: DateTime, tweetCount: BigDecimal): BigDecimal = {
     val duration       = new Duration(start, now)
     val hoursElapsed = duration.getStandardHours
     if (hoursElapsed == 0)
       0
     else
-      BigDecimal.valueOf(tweetCount) / BigDecimal.valueOf(hoursElapsed)
+      tweetCount / BigDecimal.valueOf(hoursElapsed)
   }
 
   def percentageHavingUrl: BigDecimal =
@@ -235,8 +234,11 @@ object TweetService {
       percentage ( tweetsHavingTwitterOrInstagramPicture.get )
 
   private def percentage(count: Long, totalTweetCount: Long): BigDecimal = {
-    val decimalPercent = BigDecimal.valueOf( count ) / BigDecimal.valueOf ( totalTweetCount )
-    decimalPercent * BigDecimal.valueOf( 100 )
+    if(totalTweetCount == 0) 0
+    else {
+      val decimalPercent = BigDecimal.valueOf( count ) / BigDecimal.valueOf ( totalTweetCount )
+      decimalPercent * BigDecimal.valueOf( 100 )
+    }
   }
 
   def tweetsHavingEmojis: BigDecimal = BigDecimal.valueOf( tweetsWithEmojiCount.get() )

@@ -16,7 +16,7 @@ object EmojiService {
     * @param input String input
     * @return [[List[net.model.Emoji]] for each separate emoji occurrence in the `input`.
     */
-  def findAllEmojiInstances(emoji: Emoji, input: String): List[Emoji] =
+  private [service] def findAllEmojiInstances(emoji: Emoji, input: String): List[Emoji] =
     input.codePoints.toArray.toList.sliding(emoji.codePointsSize).toList.flatMap { window =>
       if(window == emoji.list) List(emoji) else Nil
     }
