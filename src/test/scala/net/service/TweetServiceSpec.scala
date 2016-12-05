@@ -25,7 +25,7 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     TweetService.percentageTweetsHavingEmojis should be (0)
     TweetService.top5HashTags                 should be (Nil)
     TweetService.top5Emojis                   should be (Nil)
-    TweetService.top5Domains                  should be (Nil)
+    TweetService.top5Urls                  should be (Nil)
   }
 
   val hashTag1 = "foo"
@@ -51,7 +51,7 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     TweetService.percentageTweetsHavingEmojis should be (0)
     TweetService.top5HashTags                 should be ( List( (hashTag2, 2*runs), (hashTag1, 1*runs))) // recall that tweetWith2HashTags repeats 555 times.
     TweetService.top5Emojis                   should be (Nil)
-    TweetService.top5Domains                  should be (Nil)
+    TweetService.top5Urls                  should be (Nil)
   }
 
   import net.model.EmojiServiceSpec.codePointsToString
@@ -81,7 +81,7 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     TweetService.percentageHavingPicture      should be (0)
     TweetService.top5HashTags                 should be (Nil)
     TweetService.top5Emojis                   should be (List( (emojiTwoCodePoints, runs2 * 2), (emojiSingleCodePoint, runs2) ) )
-    TweetService.top5Domains                  should be (Nil)
+    TweetService.top5Urls                  should be (Nil)
   }
 
   import TweetService.InstagramPhotoPrefix
@@ -111,7 +111,7 @@ class TweetServiceSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
     TweetService.percentageTweetsHavingEmojis should be (0)
     TweetService.top5HashTags                 should be (Nil)
     TweetService.top5Emojis                   should be (Nil)
-    TweetService.top5Domains                  should be (List ((Yahoo, runs3), (Google, runs3) ) )
+    TweetService.top5Urls                  should be (List ((Yahoo, runs3), (Google, runs3) ) )
   }
   
   // net.service.TweetService contains mutable state, i.e. for metrics.

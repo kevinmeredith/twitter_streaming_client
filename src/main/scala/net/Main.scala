@@ -6,7 +6,7 @@ import cats.data.Xor
 import net.model.Tweet
 import io.circe._
 import net.service.EmojiService
-import net.service.TweetService.processTweetStream
+import net.service.TweetService.{InternalMetrics, f}
 
 import scalaz.concurrent.Task
 import scalaz.stream.Process
@@ -31,10 +31,13 @@ object Main extends ServerApp {
 		} yield s
 	}
 
+	private val emptyMetrics: DateTime => InternalMetrics =
+		InternalMetrics(0, 0, Map.empty, 0, Map.empty, 0, Map.empty, 0, _)
+
 	private def tweetStream: Task[Unit] = for {
 		file   <- Task { new File(this.getClass.getResource("/emoji.json").toURI) }
 		emojis <- EmojiService.read(file)
-		_      <- processTweetStream(stati.flatMap { json => Process.eval( readJsonToTweet(json) ) }, emojis).runLog
+		_      <- f(stati.flatMap { json => Process.eval( readJsonToTweet(json) ) }, emptyMetrics(DateTime.now), emojis).runLog
 	} yield ()
 
 	private def readJsonToTweet(json: Json): Task[Option[Tweet]] = json.as[Tweet] match {
