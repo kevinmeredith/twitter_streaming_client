@@ -6,8 +6,9 @@ import cats.data.Xor
 import net.model.Tweet
 import io.circe._
 import net.service.EmojiService
+import scalaz._
 import net.service.TweetService.{InternalMetrics, f}
-
+import scalaz.stream.async
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 import org.http4s.server.{Server, ServerApp}
@@ -15,30 +16,37 @@ import net.web.MetricsService.metrics
 import org.http4s.server.blaze.BlazeBuilder
 import org.joda.time.DateTime
 
+import scalaz.stream.async.mutable.Signal
+
 object Main extends ServerApp {
 
 	import net.service.StatusRepositoryImpl.stati
+
+	private val initialMetrics                          = InternalMetrics(0, 0, Map.empty, 0, Map.empty, 0, Map.empty, 0, DateTime.now)
+	private val currentMetrics: Signal[InternalMetrics] = async.signalOf(initialMetrics)
 
 	override def server(args: List[String]): Task[Server] = {
 		for {
       s <- {
         BlazeBuilder
           .bindHttp(8080, "localhost")
-          .mountService(metrics(DateTime.now), "/api")
+          .mountService(metrics(DateTime.now, currentMetrics), "/api")
           .start
       }
-			_ <- tweetStream
+			_ <- Task.now( tweetStream.unsafePerformAsync {
+				case \/-(_) => ()
+				case -\/(e) => println("error: " + e.getStackTrace.mkString("\n"))
+			} )
 		} yield s
 	}
 
-	private val emptyMetrics: DateTime => InternalMetrics =
-		InternalMetrics(0, 0, Map.empty, 0, Map.empty, 0, Map.empty, 0, _)
-
 	private def tweetStream: Task[Unit] = for {
-		file   <- Task { new File(this.getClass.getResource("/emoji.json").toURI) }
-		emojis <- EmojiService.read(file)
-		_      <- f(stati.flatMap { json => Process.eval( readJsonToTweet(json) ) }, emptyMetrics(DateTime.now), emojis).runLog
-	} yield ()
+		file    <- Task { new File(this.getClass.getResource("/emoji.json").toURI) }
+		emojis  <- EmojiService.read(file)
+		running <- f(stati.flatMap { json => Process.eval( readJsonToTweet(json) ) },
+			initialMetrics,
+			emojis).map(async.mutable.Signal.Set.apply).to(currentMetrics.sink).run
+	} yield running
 
 	private def readJsonToTweet(json: Json): Task[Option[Tweet]] = json.as[Tweet] match {
 		case Xor.Right(tweet) => Task.now { Some(tweet) }

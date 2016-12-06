@@ -61,7 +61,7 @@ object TweetService {
 
   // Internal, i.e. system metrics, that become collected
   // in order to have the info to produce [[ClientMetrics]]
-  case class InternalMetrics(tweetCount: BigDecimal,
+  case class InternalMetrics(tweetCount: Long,
                              tweetsHavingEmojis: Long,
                              tweetedEmojis: Map[Emoji, Long],
                              tweetsHavingHashTag: Long,
@@ -71,8 +71,26 @@ object TweetService {
                              tweetsHavingTwitterOrInstagramPic: Long,
                              streamStart: DateTime)
 
+  object ClientMetrics {
+    def fromInternalMetrics(m: InternalMetrics) = {
+      val now = DateTime.now
+      ClientMetrics(
+        tweetCount                   = m.tweetCount,
+        avgTweetsPerHr               = averageTweetsPerHour(m.streamStart, now, m.tweetCount),
+        avgTweetsPerMin              = averageTweetsPerMinute(m.streamStart, now, m.tweetCount),
+        avgTweetsPerSec              = averageTweetsPerSecond(m.streamStart, now, m.tweetCount),
+        percentTweetsWithEmoji       = percentage(m.tweetsHavingEmojis, m.tweetCount),
+        top5Emojis                   = top5(m.tweetedEmojis),
+        top5HashTags                 = top5(m.tweetedHashTags),
+        percentTweetsWithUrl         = percentage(m.tweetsHavingUrl, m.tweetCount),
+        percentWithInstaOrTwitterPic = percentage(m.tweetsHavingTwitterOrInstagramPic, m.tweetCount),
+        top5Urls                     = top5(m.tweetedUrls)
+      )
+    }
+  }
+
   // Metrics that the client cares about
-  case class ClientMetrics(tweetCount: Long,
+  case class ClientMetrics(tweetCount: BigDecimal,
                            avgTweetsPerHr: BigDecimal,
                            avgTweetsPerMin: BigDecimal,
                            avgTweetsPerSec: BigDecimal,
