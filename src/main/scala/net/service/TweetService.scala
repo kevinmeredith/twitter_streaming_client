@@ -22,7 +22,7 @@ object TweetService {
             case Nil    => acc.tweetsHavingEmojis
             case _ :: _ => acc.tweetsHavingEmojis + 1
           }
-          val emojiMap                      = emojis.foldLeft(acc.tweetedEmojis)(addToMap)
+          val emojiMap                  = emojis.foldLeft(acc.tweetedEmojis)(addToMap)
           val runningTweetsWithUrlCount = tweet.urls match {
             case _ :: _ => acc.tweetsHavingUrl + 1
             case Nil    => acc.tweetsHavingUrl
