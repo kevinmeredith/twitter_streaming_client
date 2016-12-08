@@ -1,9 +1,8 @@
-package net.model
+package net.service
 
 import java.io.File
-
 import cats.data.NonEmptyList
-import net.service.EmojiService
+import net.model.Emoji
 import org.scalatest.FlatSpec
 
 object EmojiServiceSpec {

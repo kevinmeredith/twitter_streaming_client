@@ -2,6 +2,7 @@ package net.service
 
 import org.joda.time.{DateTime, Duration}
 import net.model.{Emoji, Tweet}
+
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 
@@ -58,6 +59,10 @@ object TweetService {
       case Some(v) => m.updated(elem, v + 1)
       case None    => m + ((elem, 1L))
     }
+
+  object InternalMetrics {
+    def empty(start: DateTime) = InternalMetrics(0, 0, Map.empty, 0, Map.empty, 0, Map.empty, 0, start)
+  }
 
   // Internal, i.e. system metrics, that become collected
   // in order to have the info to produce [[ClientMetrics]]

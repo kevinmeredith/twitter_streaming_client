@@ -22,7 +22,7 @@ object Main extends ServerApp {
 
 	import net.service.StatusRepositoryImpl.stati
 
-	private val initialMetrics                          = InternalMetrics(0, 0, Map.empty, 0, Map.empty, 0, Map.empty, 0, DateTime.now)
+	private val initialMetrics                          = InternalMetrics.empty(DateTime.now)
 	private val currentMetrics: Signal[InternalMetrics] = async.signalOf(initialMetrics)
 
 	override def server(args: List[String]): Task[Server] = {
@@ -43,6 +43,7 @@ object Main extends ServerApp {
 	private def tweetStream: Task[Unit] = for {
 		file    <- Task { new File(this.getClass.getResource("/emoji.json").toURI) }
 		emojis  <- EmojiService.read(file)
+	  // credit to Paul Snively and https://www.chrisstucchio.com/blog/2014/scalaz_streaming_tutorial.html
 		running <- f(stati.flatMap { json => Process.eval( readJsonToTweet(json) ) },
 			initialMetrics,
 			emojis).map(async.mutable.Signal.Set.apply).to(currentMetrics.sink).run
