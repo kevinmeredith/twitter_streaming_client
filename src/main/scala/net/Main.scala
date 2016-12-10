@@ -6,39 +6,35 @@ import cats.data.Xor
 import net.model.Tweet
 import io.circe._
 import net.service.EmojiService
-import scalaz._
 import net.service.TweetService.{InternalMetrics, metrics, sink}
 import scalaz.stream.async
 import scalaz.concurrent.Task
 import scalaz.stream.Process
-import org.http4s.server.{Server, ServerApp}
 import net.web.MetricsService.clientMetrics
 import org.http4s.server.blaze.BlazeBuilder
 import org.joda.time.DateTime
 
 import scalaz.stream.async.mutable.Signal
 
-object Main extends ServerApp {
+object Main {
 
 	import net.service.StatusRepositoryImpl.stati
 
 	private val initialMetrics                          = InternalMetrics.empty(DateTime.now)
 	private val currentMetrics: Signal[InternalMetrics] = async.signalOf(initialMetrics)
 
-	override def server(args: List[String]): Task[Server] = {
-		for {
-      s <- {
-        BlazeBuilder
-          .bindHttp(8080, "localhost")
-          .mountService(clientMetrics(DateTime.now, currentMetrics), "/api")
-          .start
-      }
-			_ <- Task.now( tweetStream.unsafePerformAsync {
-				case \/-(_) => ()
-				case -\/(e) => println("error: " + e.getStackTrace.mkString("\n"))
-			} )
-		} yield s
+	def main(args: Array[String]): Unit = {
+		val tasks = List(server, tweetStream)
+		val run = Task.gatherUnordered(tasks).unsafePerformSync
+		()
 	}
+
+	def server: Task[Unit] =
+		BlazeBuilder
+			.bindHttp(8080, "localhost")
+			.mountService(clientMetrics(DateTime.now, currentMetrics), "/api")
+			.start
+	    .flatMap( _ => Task.now( () ) )
 
 	private def tweetStream: Task[Unit] = for {
 		file    <- Task { new File(this.getClass.getResource("/emoji.json").toURI) }
