@@ -2,15 +2,20 @@ package net.service
 
 import org.joda.time.{DateTime, Duration}
 import net.model.{Emoji, Tweet}
-
 import scalaz.concurrent.Task
-import scalaz.stream.Process
+import scalaz.stream.{Process, async}
+import scalaz.stream.async.mutable.Signal
 
 object TweetService {
+
+  def sink(p: Process[Task, InternalMetrics],
+           currentMetrics: Signal[InternalMetrics]): Process[Task, Unit] =
+  p.map(async.mutable.Signal.Set.apply).to(currentMetrics.sink)
+
   //def scan[B](b: B)(f: (B,O) => B): Process[F,B] =
-  def f(tweets: Process[Task, Option[Tweet]],
-        accumulator: InternalMetrics,
-        eligibleEmojisInTweet: List[Emoji]): Process[Task, InternalMetrics] = {
+  def metrics(tweets: Process[Task, Option[Tweet]],
+              accumulator: InternalMetrics,
+              eligibleEmojisInTweet: List[Emoji]): Process[Task, InternalMetrics] = {
     tweets.scan(accumulator) { (acc, tw) =>
 
       tw match {

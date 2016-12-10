@@ -7,12 +7,12 @@ import net.model.Tweet
 import io.circe._
 import net.service.EmojiService
 import scalaz._
-import net.service.TweetService.{InternalMetrics, f}
+import net.service.TweetService.{InternalMetrics, metrics, sink}
 import scalaz.stream.async
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 import org.http4s.server.{Server, ServerApp}
-import net.web.MetricsService.metrics
+import net.web.MetricsService.clientMetrics
 import org.http4s.server.blaze.BlazeBuilder
 import org.joda.time.DateTime
 
@@ -30,7 +30,7 @@ object Main extends ServerApp {
       s <- {
         BlazeBuilder
           .bindHttp(8080, "localhost")
-          .mountService(metrics(DateTime.now, currentMetrics), "/api")
+          .mountService(clientMetrics(DateTime.now, currentMetrics), "/api")
           .start
       }
 			_ <- Task.now( tweetStream.unsafePerformAsync {
@@ -44,9 +44,9 @@ object Main extends ServerApp {
 		file    <- Task { new File(this.getClass.getResource("/emoji.json").toURI) }
 		emojis  <- EmojiService.read(file)
 	  // credit to Paul Snively and https://www.chrisstucchio.com/blog/2014/scalaz_streaming_tutorial.html
-		running <- f(stati.flatMap { json => Process.eval( readJsonToTweet(json) ) },
+		running <- sink(metrics(stati.flatMap { json => Process.eval( readJsonToTweet(json) ) },
 			initialMetrics,
-			emojis).map(async.mutable.Signal.Set.apply).to(currentMetrics.sink).run
+			emojis), currentMetrics).run
 	} yield running
 
 	private def readJsonToTweet(json: Json): Task[Option[Tweet]] = json.as[Tweet] match {

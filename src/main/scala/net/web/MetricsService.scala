@@ -9,7 +9,7 @@ import scalaz.stream.async.mutable.Signal
 
 object MetricsService {
 
-  def metrics(start: DateTime, metrics: Signal[InternalMetrics]) = HttpService {
+  def clientMetrics(start: DateTime, metrics: Signal[InternalMetrics]) = HttpService {
     case GET -> Root / "metrics" => metrics.get.flatMap { m => Ok(ClientMetrics.fromInternalMetrics(m).toString) }
   }
 

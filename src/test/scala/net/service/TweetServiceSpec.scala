@@ -18,7 +18,7 @@ class TweetServiceSpec extends FlatSpec with Matchers  {
     val stream: Process[Task, Option[Tweet]] = Process.repeatEval(Task.now(Some(tweet1))).take(100)
     val zero                                 = InternalMetrics.empty(start)
     val runningMetrics                       = async.signalOf(zero)
-    TweetService.f(stream, zero, Nil).map(async.mutable.Signal.Set.apply).to(runningMetrics.sink).run.unsafePerformSync
+    TweetService.metrics(stream, zero, Nil).map(async.mutable.Signal.Set.apply).to(runningMetrics.sink).run.unsafePerformSync
     runningMetrics.get.unsafePerformSync should be ( zero.copy(tweetCount = count) )
   }
 
@@ -36,7 +36,7 @@ class TweetServiceSpec extends FlatSpec with Matchers  {
     val zero                                 = InternalMetrics.empty(start)
     val runningMetrics                       = async.signalOf(zero)
     val stream: Process[Task, Option[Tweet]] = Process.repeatEval(Task.now(Some(tweetWith2HashTags))).take(runs.toInt)
-    TweetService.f(stream, zero, Nil).map(async.mutable.Signal.Set.apply).to(runningMetrics.sink).run.unsafePerformSync
+    TweetService.metrics(stream, zero, Nil).map(async.mutable.Signal.Set.apply).to(runningMetrics.sink).run.unsafePerformSync
     runningMetrics.get.unsafePerformSync should be (
       zero.copy(tweetCount = runs, tweetsHavingHashTag =  runs, tweetedHashTags = Map( (hashTag1, 1*runs), (hashTag2, 2*runs) ))
     )
@@ -62,7 +62,7 @@ class TweetServiceSpec extends FlatSpec with Matchers  {
     val zero                                 = InternalMetrics.empty(start)
     val runningMetrics                       = async.signalOf(zero)
     val stream: Process[Task, Option[Tweet]] = Process.repeatEval(Task.now(Some(tweetWith2Emojis))).take(runs2.toInt)
-    TweetService.f(stream, zero, emojis).map(async.mutable.Signal.Set.apply).to(runningMetrics.sink).run.unsafePerformSync
+    TweetService.metrics(stream, zero, emojis).map(async.mutable.Signal.Set.apply).to(runningMetrics.sink).run.unsafePerformSync
     runningMetrics.get.unsafePerformSync should be (
       zero.copy(tweetCount = runs2, tweetsHavingEmojis = runs2, tweetedEmojis = Map((emojiSingleCodePoint, runs2), (emojiTwoCodePoints, runs2*2)))
     )
@@ -86,7 +86,7 @@ class TweetServiceSpec extends FlatSpec with Matchers  {
     val zero                                 = InternalMetrics.empty(start)
     val runningMetrics                       = async.signalOf(zero)
     val stream: Process[Task, Option[Tweet]] = Process.repeatEval(Task.now(Some(tweetWithInstagramAndTwitterPic))).take(runs3.toInt)
-    TweetService.f(stream, zero, Nil).map(async.mutable.Signal.Set.apply).to(runningMetrics.sink).run.unsafePerformSync
+    TweetService.metrics(stream, zero, Nil).map(async.mutable.Signal.Set.apply).to(runningMetrics.sink).run.unsafePerformSync
     runningMetrics.get.unsafePerformSync should be (
       zero.copy(
         tweetCount                        = runs3,
