@@ -39,3 +39,5 @@ scalacOptions ++= Seq(
   "-Xfuture",
   "-Ywarn-unused-import"     // 2.11 only
 )
+
+javaOptions ++= Seq("-XX:MaxPermSize=128m", "-Xmx1G")
